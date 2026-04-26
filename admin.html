@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>后台管理 - 奶声馆</title>
+    <style>
+* {margin: 0;padding: 0;box-sizing: border-box;}
+body {
+    font-family: "Microsoft YaHei", sans-serif;
+    background-color: #111111;
+    color: #b8b8b8;
+    padding: 20px;
+    line-height: 1.6;
+    max-width: 1400px;
+    margin: 0 auto;
+}
+.header-nav {
+    display: flex;align-items: center;gap: 35px;
+    background: #1a1a1a;padding: 16px 24px;border-radius: 10px;
+    border: 1px solid #2a2a2a;margin-bottom: 30px;flex-wrap: wrap;
+}
+.header-nav h1 {font-size: 24px;color: #2ecc71;font-weight: 700;}
+.header-nav a {
+    font-size: 15px;font-weight: 500;cursor: pointer;
+    transition: all 0.3s ease;color: #999;margin:0;text-decoration: none;
+}
+.header-nav a:hover {color: #2ecc71;}
+.section-title {
+    font-size: 20px;border-left: 4px solid #2ecc71;
+    padding-left: 12px;margin: 35px 0 20px;color: #c0c0c0;
+}
+.upload-box {
+    background: #1a1a1a;border: 1px solid #2a2a2a;
+    border-radius: 10px;padding: 24px;margin-bottom: 30px;
+}
+.upload-item {margin-bottom: 18px;}
+.upload-item label {display: block;margin-bottom: 8px;color: #ccc;}
+.upload-item input,.upload-item select {
+    width: 100%;padding: 10px 14px;background: #222;
+    border: 1px solid #333;border-radius: 6px;color: #b0b0b0;outline: none;
+}
+.btn {padding: 9px 20px;border: none;border-radius: 6px;cursor: pointer;transition: 0.3s;font-size: 14px; margin: 0 4px;}
+.btn-green {background: #2ecc71;color: #000;}
+.tab-btns {display: flex; gap:10px; margin-bottom:20px;}
+.tab-btn {padding:8px 16px; background:#222; border:none; border-radius:6px; color:#ccc; cursor:pointer;}
+.tab-btn.active {background:#2ecc71; color:#000;}
+.upload-panel {display:none;}
+.upload-panel.active {display:block;}
+.table-wrap {background: #1a1a1a;border: 1px solid #2a2a2a;border-radius: 10px;overflow: hidden;}
+table {width: 100%;border-collapse: collapse;}
+th,td {padding: 14px;border-bottom: 1px solid #2a2a2a;text-align: center;font-size:14px;}
+th {background: #222;color: #ddd;}
+.thumb-img {width: 100px;height: 60px;object-fit: cover;border-radius: 4px;}
+</style>
+</head>
+<body>
+    <div class="header-nav">
+        <h1>奶声馆 · 后台管理</h1>
+        <a href="index.html">首页</a>
+    </div>
+
+    <h3 class="section-title">视频上传</h3>
+    <div class="upload-box">
+        <div class="tab-btns">
+            <button class="tab-btn active" onclick="switchTab('local')">本地上传</button>
+            <button class="tab-btn" onclick="switchTab('link')">外链嵌入</button>
+        </div>
+
+        <div id="localPanel" class="upload-panel active">
+            <input type="text" id="titleL" placeholder="标题"><br><br>
+            <select id="cateL">
+                <option value="cn">国产</option>
+                <option value="eu">欧美</option>
+                <option value="jp">日韩</option>
+                <option value="asmr">ASMR</option>
+            </select><br><br>
+            <button class="btn btn-green" onclick="addLocal()">提交</button>
+        </div>
+
+        <div id="linkPanel" class="upload-panel">
+            <input type="text" id="titleE" placeholder="标题"><br><br>
+            <select id="cateE">
+                <option value="cn">国产</option>
+                <option value="eu">欧美</option>
+                <option value="jp">日韩</option>
+                <option value="asmr">ASMR</option>
+            </select><br><br>
+            <input type="text" id="urlE" placeholder="HF视频链接"><br><br>
+            <button class="btn btn-green" onclick="addLink()">立即添加</button>
+        </div>
+    </div>
+
+    <h3 class="section-title">视频管理</h3>
+    <div class="table-wrap">
+        <table><tbody id="listBody"></tbody></table>
+    </div>
+
+<script src="video-data.js"></script>
+<script>
+const pwd = prompt("后台密码");
+if(pwd !== "Aa123123.") location.href="index.html";
+
+let list = [];
+window.onload = function(){
+    syncVideoData().then(()=>{
+        list = videoData;
+        render();
+    });
+}
+
+// 标签切换 纯原生 无任何阻塞
+function switchTab(t){
+    document.querySelectorAll(".tab-btn").forEach(x=>x.classList.remove("active"));
+    event.target.classList.add("active");
+    document.getElementById("localPanel").style.display = t==="local"?"block":"none";
+    document.getElementById("linkPanel").style.display = t==="link"?"block":"none";
+}
+
+// 外链添加 极简 不截图、不跨域、不卡死
+function addLink(){
+    let title = document.getElementById("titleE").value.trim();
+    let url = document.getElementById("urlE").value.trim();
+    let cate = document.getElementById("cateE").value;
+    if(!title||!url)return alert("填完整");
+
+    // HF自动转镜像
+    url = url.replace("huggingface.co","hf-mirror.com");
+    let obj = {
+        id:Date.now(),
+        title:title,
+        cate:cate,
+        fileUrl:url,
+        thumb:"https://picsum.photos/320/180"
+    };
+    list.unshift(obj);
+    saveRemoteVideoList(list);
+    render();
+    alert("添加成功！全局同步");
+    document.getElementById("titleE").value="";
+    document.getElementById("urlE").value="";
+}
+
+function addLocal(){
+    alert("本地上传暂时关闭，只用外链即可");
+}
+
+function render(){
+    let h = "";
+    list.forEach(v=>{
+        h += `<tr>
+            <td><img src="${v.thumb}" style="width:80px;height:45px"></td>
+            <td>${v.title}</td>
+            <td><button onclick="del(${v.id})">删除</button></td>
+        </tr>`;
+    });
+    document.getElementById("listBody").innerHTML = h;
+}
+
+function del(id){
+    list = list.filter(x=>x.id!==id);
+    saveRemoteVideoList(list);
+    render();
+}
+</script>
+</body>
+</html>
